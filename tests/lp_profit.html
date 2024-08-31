@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://unpkg.com/javascript-lp-solver/prod/solver.js"></script>
+</head>
+<body>
+    <p>Answer: {feasible: true, result: 14400, table: 8, dresser: 3}</p>
+    <script>
+    model = {
+        "optimize": "profit",
+        "opType": "max",
+        "constraints": {
+            "wood": {"max": 300},
+            "labor": {"max": 110},
+            "storage": {"max": 400}
+        },
+        "variables": {
+            "table": {"wood": 30, "labor": 5, "profit": 1200, "storage": 30},
+            "dresser": {"wood": 20, "labor": 10, "profit": 1600, "storage": 50}
+        },
+        "ints": {"table": 1, "dresser": 0}
+    }
+    results = solver.Solve(model);
+    document.write(JSON.stringify(results));
+
+    </script>
+</body>
+</html>

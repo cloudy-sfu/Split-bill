@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Split bill</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+          crossorigin="anonymous"
+    >
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+            crossorigin="anonymous">
+    </script>
+</head>
+<body class="container-sm">
+    <div class="row alert">
+        <div class="col-sm-12">
+            <h1>Split bill</h1>
+            <div class="flex">
+                <input id="import-settlement" type="file" hidden="">
+                <button class="btn" style="padding-bottom: 1rem; color: blue; border: none;"
+                        onclick="this.previousElementSibling.click()"
+                >
+                    Import
+                </button>
+                <button class="btn" style="padding-bottom: 1rem; color: blue; border: none;"
+                        onclick="download_settlement()"
+                >
+                    Export
+                </button>
+            </div>
+
+
+<!--            <div style="color: red"><b>Data is not stored if this page is closed.</b></div>-->
+        </div>
+    </div>
+    <div class="row alert">
+        <div class="col-sm-12">
+            <div class="card">
+                <div class="card-header">Group members</div>
+                <div class="card-body form" id="group-members">
+                    <div id="group-member-temp" hidden="">
+                        <label>
+                            <input class="form-control form-text" type="text" name="name">
+                        </label>
+                        <button class="btn" style="padding-bottom: 1rem; color: green; border: none;"
+                                onclick="add_member()"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+                            </svg>
+                        </button>
+                        <button class="btn" style="padding-bottom: 1rem; color: darkred; border: none;"
+                                onclick="delete_member(this.parentNode)"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-success" onclick="update_expense_members();">Apply</button>
+                    <button class="btn disabled" style="display: none; color: green;"
+                            id="update_expense_members_msg"
+                    >
+                        Applied.
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row alert">
+        <div class="col-sm-12">
+            <div class="card">
+                <div class="card-header">Expenses</div>
+                <div class="card-body form" id="expenses">
+                    <div id="expense-temp" hidden="">
+                        <label>Item
+                            <input type="text" class="form-control form-text" name="item">
+                        </label>
+                        <label>Price
+                            <input type="number" class="form-control form-text" name="price">
+                        </label>
+                        <label>Paid by
+                            <select class="form-select" style="min-width: 10rem; margin-top: 0.25rem;"
+                                    name="paid_by" name_set="members">
+                                <!--Determined by group members.-->
+                            </select>
+                        </label>
+                        <button class="btn" style="padding-bottom: 1rem; color: green; border: none;"
+                                onclick="add_expense()"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+                            </svg>
+                        </button>
+                        <button class="btn" style="padding-bottom: 1rem; color: darkred; border: none;"
+                                onclick="delete_expense(this.parentNode);"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/>
+                            </svg>
+                        </button>
+                        <br>
+                        <div class="form-check form-switch my-2">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="split-evenly" checked name="split_evenly"
+                                   onchange="show_hide_splits(this)"
+                            >
+                            <label class="form-check-label" for="split-evenly">Split evenly.</label>
+                        </div>
+                        <div name_set="splits"
+                             style="display: none; margin-left: 4ch; ">
+                            <p>The remaining group members (not mentioned below) split the remaining amount evenly.</p>
+                        </div>
+                    </div>
+                    <div id="split-temp" hidden="">
+                        <label>Group member
+                            <select class="form-select" style="min-width: 10rem; margin-top: 0.25rem;"
+                                    name="split_member" name_set="members">
+                                <!--Determined by group members.-->
+                            </select>
+                        </label>
+                        <label>Amount
+                            <input type="number" class="form-control form-text" name="amount">
+                        </label>
+                        <button class="btn" style="padding-bottom: 1rem; color: green; border: none;"
+                                onclick="add_split(this.parentNode.parentNode)" name_set="add_split"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+                            </svg>
+                        </button>
+                        <button class="btn" style="padding-bottom: 1rem; color: darkred; border: none;"
+                                onclick="delete_split(this.parentNode)"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-success" onclick="settle()">Settle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row alert">
+        <div class="col-sm-12">
+            <div class="card">
+                <div class="card-header">
+                    Results
+                    <button class="btn" style="color: blue; border: none; background: none; padding-top: 0rem;"
+                        data-bs-toggle="modal" data-bs-target="#example">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <ul id="validations" style="color: red;"></ul>
+
+                    <div style="overflow-x: auto;">
+                        <table class="table table-bordered table-striped" style="width: fit-content;"
+                               hidden="" id="exp-tb">
+                            <thead>
+                            <tr><th>Item</th><th>Group</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                            <caption class="caption-top fst-italic">Expense:</caption>
+                        </table>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="table table-bordered table-striped" style="width: fit-content;"
+                               hidden="" id="spl-tb">
+                            <thead>
+                            <tr><th>Item</th><th>Group</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                            <caption class="caption-top fst-italic">Split:</caption>
+                        </table>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="table table-bordered table-striped" style="width: fit-content;"
+                               hidden="" id="due-tb">
+                            <thead>
+                            <tr><th>Debit</th><th colspan="" id="due-credit">Credit</th></tr>
+                            <tr id="due-cols"><th>Group</th></tr>
+                            </thead>
+                            <tbody><tr></tr></tbody>
+                            <caption class="caption-top fst-italic">Due:</caption>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal fade" id="example" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div class="modal-title">How to read expense, split, and due tables?</div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <img src="example.png" style="width: 100%;"
+                                 alt="The example to explain the generated tables.">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+    const group_member_temp = document.getElementById("group-member-temp");
+    const group_members = document.getElementById("group-members");
+
+    function add_member(data) {
+        let new_member = group_member_temp.cloneNode(true);
+        new_member.removeAttribute("hidden");
+        let group_member_ids = [0];
+        group_members.querySelectorAll("div[group_member_id]").forEach(member => {
+            group_member_ids.push(parseInt(member.getAttribute("group_member_id")));
+        });
+        let next_member_id = Math.max(...group_member_ids) + 1;
+        if (data !== undefined) {
+            if (group_member_ids.includes(data['id'])) {
+                console.log(`Fail to add ${data} because ID already exists.`);
+                return
+            }
+            next_member_id = data['id'];
+            new_member.querySelector("input[name='name']").value = data['name'];
+        }
+        new_member.setAttribute("id", `group-member-${next_member_id}`);
+        new_member.setAttribute("group_member_id", next_member_id);
+        group_members.appendChild(new_member);
+    }
+
+    add_member();
+
+    function delete_member(self) {
+        self.remove();
+        if (group_members.querySelectorAll("div[group_member_id]").length < 1) {
+            add_member();
+        }
+    }
+
+    function list_all_members() {
+        let members = [];
+        group_members.querySelectorAll("div[group_member_id]").forEach(member => {
+            let member_name = member.querySelector('input[name="name"]').value;
+            let member_id = member.getAttribute("group_member_id");
+            if (member_name) {
+                members.push({'id': member_id, 'name': member_name});
+            }
+        });
+        return members;
+    }
+
+    const expense_temp = document.getElementById("expense-temp");
+    const expenses = document.getElementById("expenses");
+
+    function update_expense_members() {
+        let members = list_all_members();
+        let payers = Array.from(expenses.querySelectorAll('select[name_set="members"]'));
+        payers.forEach(expense_select => {
+            const existed_options = Array.from(expense_select.options);
+            existed_options.forEach(option => {
+                if (!members.some(member => member.id === option.value)) {
+                    expense_select.removeChild(option);
+                }
+            });
+            members.forEach(member => {
+                if (!existed_options.some(option => member.id === option.value)) {
+                    const new_option = document.createElement("option");
+                    new_option.value = member['id'];
+                    new_option.text = member['name'];
+                    expense_select.appendChild(new_option);
+                }
+            });
+        });
+        const msg = document.getElementById("update_expense_members_msg");
+        msg.style.display = "inline-block";
+        setTimeout(function() {msg.style.display = "none";}, 1000);
+    }
+
+    function add_expense(data) {
+        let new_expense = expense_temp.cloneNode(true);
+        new_expense.removeAttribute("hidden");
+        let expense_ids = [0];
+        expenses.querySelectorAll("div[expense_id]:not([name_set='splits'])").forEach(member => {
+            expense_ids.push(parseInt(member.getAttribute("expense_id")));
+        });
+        let next_expense_id = Math.max(...expense_ids) + 1;
+        let split_evenly = new_expense.querySelector("input[name='split_evenly']");
+        let splits_box = new_expense.querySelector('div[name_set="splits"]');
+        // set "expense_id" before calling "add_split"
+        splits_box.setAttribute("expense_id", next_expense_id);
+        if (data !== undefined) {
+            if (expense_ids.includes(data['id'])) {
+                console.log(`Fail to add ${data} because ID already exists.`);
+                return
+            }
+            next_expense_id = data['id'];
+            new_expense.querySelector("input[name='item']").value = data['item'];
+            new_expense.querySelector("input[name='price']").value = data['price'];
+            const paid_by = new_expense.querySelector(`select[name='paid_by'] option[value="${data['paid_by']}"]`);
+            if (paid_by) {
+                paid_by.selected = true;
+            }
+            split_evenly.checked = data['split_evenly'];
+            if (!data['split_evenly']) {
+                splits_box.style.display = "block";
+                if (data['splits'].length > 0) {
+                    for (let data_split of data['splits']) {
+                        add_split(splits_box, data_split);
+                    }
+                } else {
+                    add_split(splits_box);
+                }
+            }
+        }
+        new_expense.setAttribute("id", `expense-${next_expense_id}`);
+        new_expense.setAttribute("expense_id", next_expense_id);
+        split_evenly.setAttribute("id", `split-evenly-${next_expense_id}`);
+        split_evenly.setAttribute("expense_id", next_expense_id);
+        split_evenly.nextElementSibling.setAttribute("for", `split-evenly-${next_expense_id}`);
+        expenses.appendChild(new_expense);
+    }
+
+    add_expense();
+
+    function delete_expense(self) {
+        self.remove();
+        if (expenses.querySelectorAll("div[expense_id]:not([name_set='splits'])").length < 1) {
+            add_expense();
+        }
+    }
+
+    function show_hide_splits(self) {
+        const expense_id = self.getAttribute("expense_id");
+        const expense = expenses.querySelector(`div[expense_id="${expense_id}"]`);
+        const splits_box = expense.querySelector('div[name_set="splits"]');
+        if (self.checked) {
+            splits_box.style.display = "none";
+            splits_box.innerHTML = "";
+        } else {
+            splits_box.style.display = "block";
+            add_split(splits_box);
+        }
+    }
+
+    const split_temp = document.getElementById("split-temp");
+
+    function add_split(splits_box, data) {
+        const expense_id = splits_box.getAttribute("expense_id");
+        let new_split = split_temp.cloneNode(true);
+        new_split.removeAttribute("hidden");
+        let split_ids = [0];
+        splits_box.querySelectorAll("[split_id]").forEach(split => {
+            split_ids.push(parseInt(split.getAttribute("split_id")));
+        });
+        let next_split_id = Math.max(...split_ids) + 1;
+        if (data !== undefined) {
+            if (split_ids.includes(data['id'])) {
+                console.log(`Fail to add ${data} because ID already exists.`);
+                return
+            }
+            next_split_id = data['id'];
+            const split_member = new_split.querySelector(
+                `select[name='split_member'] option[value="${data['member_id']}"]`);
+            if (split_member) {
+                split_member.selected = true;
+            }
+            new_split.querySelector('input[name="amount"]').value = data['amount'];
+        }
+        new_split.setAttribute("id", `expense-${expense_id}-split-${next_split_id}`);
+        new_split.setAttribute("split_id", next_split_id);
+        splits_box.appendChild(new_split);
+    }
+
+    function delete_split(self) {
+        const splits_box = self.parentNode;
+        self.remove();
+        if (splits_box.querySelectorAll("[split_id]").length < 1) {
+            add_split(splits_box);
+        }
+    }
+
+    function import_settlement(data) {
+        group_members.querySelectorAll("div[group_member_id]").forEach(node => node.remove());
+        expenses.querySelectorAll("div[expense_id]:not([name_set='splits'])").forEach(node => node.remove());
+        if (data['members'].length > 0) {
+            for (let member of data['members']) {
+                add_member(member);
+            }
+        } else {
+            add_member();
+        }
+        update_expense_members();
+        if (data['expenses'].length > 0) {
+            for (let expense of data['expenses']) {
+                add_expense(expense);
+            }
+        } else {
+            add_expense();
+        }
+    }
+
+    function handle_file_loaded(event) {
+        const settlement = JSON.parse(event.target.result);
+        import_settlement(settlement);
+    }
+
+    function handle_file_selected(event) {
+        if (event.target.files.length > 0) {
+            const reader = new FileReader();
+            reader.onload = handle_file_loaded;
+            reader.readAsText(event.target.files[0]);
+        }
+        event.target.value = null;
+    }
+
+    document.getElementById('import-settlement').addEventListener('change', handle_file_selected, false);
+
+    function export_and_validate_settlement() {
+        let settlement = {"members": [], "expenses": [], "valid_msg": []};
+        let member_ids = [];
+        for (let member of group_members.querySelectorAll("div[group_member_id]")) {
+            let member_dict = {
+                "id": parseInt(member.getAttribute("group_member_id")),
+                "name": member.querySelector("input[name='name']").value
+            }
+            settlement['members'].push(member_dict);
+            member_ids.push(member_dict['id']);
+        }
+        if (member_ids.length === 0) {
+            settlement["valid_msg"].push("The set of group members should not be empty.");
+        }
+        for (let expense of expenses.querySelectorAll("div[expense_id]:not([name_set='splits'])")) {
+            let expense_dict = {
+                "id": parseInt(expense.getAttribute("expense_id")),
+                "item": expense.querySelector("input[name='item']").value,
+                "price": parseFloat(expense.querySelector("input[name='price']").value),
+                "paid_by": parseInt(expense.querySelector("select[name='paid_by']").value),
+                "split_evenly": expense.querySelector("input[name='split_evenly']").checked,
+                "splits": [],
+            }
+            if (!expense_dict['price']) {
+                settlement["valid_msg"].push(`The price of item ${expense_dict['item']} should exist.`);
+            } else if (expense_dict['price'] <= 0) {
+                settlement["valid_msg"].push(`The price of item ${expense_dict['item']} should be positive.`);
+            }
+            if (!member_ids.includes(expense_dict['paid_by'])) {
+                settlement["valid_msg"].push(`The item ${expense_dict['item']} is paid by a group member ID ${expense_dict['paid_by']}, which doesn't exist.`);
+            }
+            if (expense_dict['split_evenly']) {
+                if (expense_dict['splits'].length > 0) {
+                    settlement['valid_msg'].push(`The item ${expense_dict['item']} is split evenly, so manual split plans should not exist.`);
+                }
+            } else {
+                let amounts = [];
+                for (let split of expense.querySelectorAll("div[split_id]")) {
+                    let split_dict = {
+                        "id": parseInt(split.getAttribute("split_id")),
+                        "member_id": parseInt(split.querySelector("select[name='split_member']").value),
+                        "amount": parseFloat(split.querySelector("input[name='amount']").value)
+                    }
+                    if (!member_ids.includes(split_dict['member_id'])) {
+                        settlement["valid_msg"].push(`The item ${expense_dict['item']} is split to a group member ID ${split_dict['member_id']}, which doesn't exist.`);
+                    }
+                    if (split_dict['amount'] == null) {
+                        settlement["valid_msg"].push(`The amount of item ${expense_dict['item']} split to ${settlement['members'][member_ids.indexOf(split_dict['member_id'])]['name']} should exist.`);
+                    } else if (split_dict['amount'] < 0) {
+                        settlement["valid_msg"].push(`The amount of item ${expense_dict['item']} split to ${settlement['members'][member_ids.indexOf(split_dict['member_id'])]['name']} should be zero or positive.`);
+                    }
+                    expense_dict["splits"].push(split_dict);
+                    amounts.push(split_dict['amount']);
+                }
+                if (expense_dict['splits'].length === 0) {
+                    settlement['valid_msg'].push(`The item ${expense_dict['item']} is split evenly, so manual split plans should not exist.`);
+                }
+                const total_amount = amounts.reduce((s, x) => s + x, 0);
+                if (total_amount > expense_dict['price']) {
+                    settlement['valid_msg'].push(`The total manually split amount of item ${expense_dict['item']} should not exceed its price.`);
+                }
+            }
+            settlement['expenses'].push(expense_dict);
+        }
+        return settlement
+    }
+
+    function download_settlement() {
+        const settlement = export_and_validate_settlement();
+        const blob = new Blob([JSON.stringify(settlement, null, 4)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const download = document.createElement('a');
+        download.href = url;
+        download.download = "settlement.json";
+        download.click();
+        URL.revokeObjectURL(url);
+    }
+
+    const validations_message = document.getElementById("validations");
+    const expense_table = document.getElementById("exp-tb");
+    const split_table = document.getElementById("spl-tb");
+    const due_table = document.getElementById("due-tb");
+
+    function settle() {
+        const settlement = export_and_validate_settlement();
+
+        // initialize table headers' locators
+        const exp_cols = expense_table.querySelector("thead tr");
+        const exp_dt = expense_table.querySelector("tbody");
+        const spl_cols = split_table.querySelector("thead tr");
+        const spl_dt = split_table.querySelector("tbody");
+        const due_credit = due_table.querySelector("#due-credit");
+        const due_cols = due_table.querySelector("tr#due-cols");
+        const due_row = due_table.querySelector("tbody tr");
+
+        // clear existed info
+        validations_message.innerHTML = '';
+        expense_table.setAttribute("hidden", "");
+        split_table.setAttribute("hidden", "");
+        due_table.setAttribute("hidden", "");
+        // because <thead> doesn't allow <div> in it, cannot directly remove innerHTML
+        while (exp_cols.children.length > 2) {  // skip "Item" and "Group"
+            exp_cols.children[2].remove();
+        }
+        while (spl_cols.children.length > 2) {
+            spl_cols.children[2].remove();
+        }
+        while (due_cols.children.length > 1) {
+            due_cols.children[1].remove();
+        }
+        exp_dt.innerHTML = '';
+        spl_dt.innerHTML = '';
+        due_row.innerHTML = '';
+
+        // validation messages
+        if (settlement['valid_msg'].length > 0) {
+            for (let msg of settlement['valid_msg']) {
+                let msg_node = document.createElement('li');
+                msg_node.textContent = msg;
+                validations_message.appendChild(msg_node);
+            }
+            return
+        }
+
+        // initialize calculated fields of settlement
+        let member_ids = [];
+        for (let member of settlement['members']) {
+            member_ids.push(member['id']);
+            let exp_col = document.createElement('th');
+            exp_col.innerText = member['name'];
+            exp_col.style.maxWidth = "10ch";
+            exp_col.style.overflowX = "hidden";
+            exp_cols.appendChild(exp_col);
+            const spl_col = exp_col.cloneNode(true);
+            spl_cols.appendChild(spl_col);
+            const due_col = exp_col.cloneNode(true);
+            due_cols.appendChild(due_col);
+        }
+        const n = member_ids.length;
+        due_credit.setAttribute("colspan", `${n}`);
+
+        // expense & split table
+        expense_table.removeAttribute("hidden");
+        split_table.removeAttribute("hidden");
+        let exp_dt_arr = [];
+        let spl_dt_arr = [];
+        for (let expense of settlement['expenses']) {
+            // calc values in tables
+            let exp_row_arr = new Array(n + 1).fill(0);
+            let spl_row_arr = new Array(n + 1).fill(0);
+            const price = expense['price'];
+            const b = member_ids.indexOf(expense['paid_by']);
+            exp_row_arr[0] = price;
+            exp_row_arr[b + 1] = price;
+            exp_dt_arr.push(exp_row_arr);
+            spl_row_arr[0] = price;
+            if (expense['split_evenly']) {
+                spl_row_arr.fill(price / n, 1);
+            } else {
+                let price_unsplit = price;
+                let spl_val_filled = [];
+                for (let split of expense['splits']) {
+                    const b = member_ids.indexOf(split['member_id']);
+                    price_unsplit -= split['amount'];
+                    spl_row_arr[b + 1] = split['amount'];
+                    spl_val_filled.push(b + 1);
+                }
+                // if not specially split, evenly distribute the remaining values
+                if (spl_val_filled.length < n) {
+                    let price_per = price_unsplit / (n - spl_val_filled.length);
+                    for (let i = 1; i < n + 1; i++) {
+                        if (!spl_val_filled.includes(i)) {
+                            spl_row_arr[i] = price_per;
+                        }
+                    }
+                }
+            }
+            spl_dt_arr.push(spl_row_arr);
+
+            // generate HTML structure
+            let exp_row = document.createElement('tr');
+            let spl_row = document.createElement('tr');
+            let exp_idx = document.createElement('td');
+            exp_idx.innerText = expense['item'];
+            exp_idx.style.maxWidth = "25ch";
+            exp_idx.style.overflowX = "hidden";
+            exp_row.appendChild(exp_idx);
+            const spl_idx = exp_idx.cloneNode(true);
+            spl_row.appendChild(spl_idx);
+            for (let i = 0; i < n + 1; i++) {
+                let exp_cell = document.createElement('td');
+                exp_cell.style.textAlign = "end";
+                exp_cell.innerText = exp_row_arr[i].toFixed(2);
+                exp_row.appendChild(exp_cell);
+                let spl_cell = exp_cell.cloneNode(false);
+                spl_cell.innerText = spl_row_arr[i].toFixed(2);
+                spl_row.appendChild(spl_cell);
+            }
+            exp_dt.appendChild(exp_row);
+            spl_dt.appendChild(spl_row);
+        }
+
+        // calc SUM
+        let exp_col_sum = exp_dt_arr.reduce((acc, row) => {
+            return row.map((value, index) => acc[index] + value);
+        });
+        let spl_col_sum = spl_dt_arr.reduce((acc, row) => {
+            return row.map((value, index) => acc[index] + value);
+        });
+        let exp_row = document.createElement('tr');
+        let exp_cell = document.createElement('th');
+        exp_cell.innerText = "Sum";
+        exp_row.appendChild(exp_cell);
+        let spl_row = document.createElement('tr');
+        let spl_cell = exp_cell.cloneNode(true);
+        spl_row.appendChild(spl_cell);
+        for (let i = 0; i < n + 1; i++) {
+            let exp_cell = document.createElement('th');
+            exp_cell.style.textAlign = "end";
+            exp_cell.innerText = exp_col_sum[i].toFixed(2);
+            exp_row.appendChild(exp_cell);
+            let spl_cell = exp_cell.cloneNode(false);
+            spl_cell.innerText = spl_col_sum[i].toFixed(2);
+            spl_row.appendChild(spl_cell);
+        }
+        exp_dt.appendChild(exp_row);
+        spl_dt.appendChild(spl_row);
+
+        // calc due table
+        due_table.removeAttribute("hidden");
+        let due_row_arr = [];
+        for (let i = 0; i < n + 1; i++) {
+            const due_val = spl_col_sum[i] - exp_col_sum[i];
+            due_row_arr.push(due_val);
+            let due_cell = document.createElement('td');
+            due_cell.style.textAlign = "end";
+            due_cell.innerText = due_row_arr[i].toFixed(2);
+            due_row.appendChild(due_cell);
+        }
+    }
+</script>
+</html>

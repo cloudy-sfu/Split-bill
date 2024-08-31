@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        table, th, td {
+            border-collapse: collapse;
+            border: 0.1rem solid black;
+            padding: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+
+    <p>Expense table.</p>
+    <table id="exp-tb">
+        <thead>
+        <tr><th>Item</th><th>Group</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <p>Split table.</p>
+    <table id="spl-tb">
+        <thead>
+        <tr><th>Item</th><th>Group</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <p>Due table.</p>
+    <table id="due-tb">
+        <thead>
+        <tr><th>Debit</th><th colspan="" id="due-credit">Credit</th></tr>
+        <tr id="due-cols"><th>Group</th></tr>
+        </thead>
+        <tbody><tr></tr></tbody>
+    </table>
+
+    <script>
+        const settlement = {
+            "members": [
+                {"id": 1, "name": "Ben Looooooooooooooooooooooooong"},
+                {"id": 2, "name": "Emily"},
+                {"id": 3, "name": "John"}
+            ],
+            "expenses": [
+                {"id": 1, "item": "Sausage Looooooooooooooooooooooooooooooong",
+                    "price": 4.99, "paid_by": 2, "split_evenly": true},
+                {"id": 2, "item": "Milk", "price": 2.99, "paid_by": 2, "split_evenly": false,
+                    "splits": [
+                        {"id": 1, "member_id": 2, "amount": 0}
+                    ]
+                },
+                {"id": 3, "item": "Water", "price": 1.09, "paid_by": 2, "split_evenly": false,
+                    "splits": [
+                        {"id": 1, "member_id": 2, "amount": 0}
+                    ]
+                }
+            ]
+        };
+
+    const expense_table = document.getElementById("exp-tb");
+    const split_table = document.getElementById("spl-tb");
+    const due_table = document.getElementById("due-tb");
+
+    // function: settle
+
+    // initialize table headers' locators
+    const exp_cols = expense_table.querySelector("thead tr");
+    const exp_dt = expense_table.querySelector("tbody");
+    const spl_cols = split_table.querySelector("thead tr");
+    const spl_dt = split_table.querySelector("tbody");
+    const due_credit = due_table.querySelector("#due-credit");
+    const due_cols = due_table.querySelector("tr#due-cols");
+    const due_row = due_table.querySelector("tbody tr");
+
+    // initialize calculated fields of settlement
+    let member_ids = [];
+    for (let member of settlement['members']) {
+        member_ids.push(member['id']);
+        let exp_col = document.createElement('th');
+        exp_col.innerText = member['name'];
+        exp_col.style.maxWidth = "10ch";
+        exp_col.style.overflowX = "hidden";
+        exp_cols.appendChild(exp_col);
+        const spl_col = exp_col.cloneNode(true);
+        spl_cols.appendChild(spl_col);
+        const due_col = exp_col.cloneNode(true);
+        due_cols.appendChild(due_col);
+    }
+    const n = member_ids.length;
+    due_credit.setAttribute("colspan", `${n}`);
+
+    // expense & split table
+    expense_table.removeAttribute("hidden");
+    split_table.removeAttribute("hidden");
+    let exp_dt_arr = [];
+    let spl_dt_arr = [];
+    for (let expense of settlement['expenses']) {
+        // calc values in tables
+        let exp_row_arr = new Array(n + 1).fill(0);
+        let spl_row_arr = new Array(n + 1).fill(0);
+        const price = expense['price'];
+        const b = member_ids.indexOf(expense['paid_by']);
+        exp_row_arr[0] = price;
+        exp_row_arr[b + 1] = price;
+        exp_dt_arr.push(exp_row_arr);
+        spl_row_arr[0] = price;
+        if (expense['split_evenly']) {
+            spl_row_arr.fill(price / n, 1);
+        } else {
+            let price_unsplit = price;
+            let spl_val_filled = [];
+            for (let split of expense['splits']) {
+                const b = member_ids.indexOf(split['member_id']);
+                price_unsplit -= split['amount'];
+                spl_row_arr[b + 1] = split['amount'];
+                spl_val_filled.push(b + 1);
+            }
+            // if not specially split, evenly distribute the remaining values
+            if (spl_val_filled.length < n) {
+                let price_per = price_unsplit / (n - spl_val_filled.length);
+                for (let i = 1; i < n + 1; i++) {
+                    if (!spl_val_filled.includes(i)) {
+                        spl_row_arr[i] = price_per;
+                    }
+                }
+            }
+        }
+        spl_dt_arr.push(spl_row_arr);
+
+        // generate HTML structure
+        let exp_row = document.createElement('tr');
+        let spl_row = document.createElement('tr');
+        let exp_idx = document.createElement('td');
+        exp_idx.innerText = expense['item'];
+        exp_idx.style.maxWidth = "25ch";
+        exp_idx.style.overflowX = "hidden";
+        exp_row.appendChild(exp_idx);
+        const spl_idx = exp_idx.cloneNode(true);
+        spl_row.appendChild(spl_idx);
+        for (let i = 0; i < n + 1; i++) {
+            let exp_cell = document.createElement('td');
+            exp_cell.style.textAlign = "end";
+            exp_cell.innerText = exp_row_arr[i].toFixed(2);
+            exp_row.appendChild(exp_cell);
+            let spl_cell = exp_cell.cloneNode(false);
+            spl_cell.innerText = spl_row_arr[i].toFixed(2);
+            spl_row.appendChild(spl_cell);
+        }
+        exp_dt.appendChild(exp_row);
+        spl_dt.appendChild(spl_row);
+    }
+
+    // calc SUM
+    let exp_col_sum = exp_dt_arr.reduce((acc, row) => {
+        return row.map((value, index) => acc[index] + value);
+    });
+    let spl_col_sum = spl_dt_arr.reduce((acc, row) => {
+        return row.map((value, index) => acc[index] + value);
+    });
+    exp_row = document.createElement('tr');
+    exp_cell = document.createElement('th');
+    exp_cell.innerText = "Sum";
+    exp_row.appendChild(exp_cell);
+    spl_row = document.createElement('tr');
+    spl_cell = exp_cell.cloneNode(true);
+    spl_row.appendChild(spl_cell);
+    for (let i = 0; i < n + 1; i++) {
+        let exp_cell = document.createElement('th');
+        exp_cell.style.textAlign = "end";
+        exp_cell.innerText = exp_col_sum[i].toFixed(2);
+        exp_row.appendChild(exp_cell);
+        let spl_cell = exp_cell.cloneNode(false);
+        spl_cell.innerText = spl_col_sum[i].toFixed(2);
+        spl_row.appendChild(spl_cell);
+    }
+    exp_dt.appendChild(exp_row);
+    spl_dt.appendChild(spl_row);
+
+    // calc due
+    let due_row_arr = [];
+    for (let i = 0; i < n + 1; i++) {
+        const due_val = spl_col_sum[i] - exp_col_sum[i];
+        due_row_arr.push(due_val);
+        let due_cell = document.createElement('td');
+        due_cell.style.textAlign = "end";
+        due_cell.innerText = due_row_arr[i].toFixed(2);
+        due_row.appendChild(due_cell);
+    }
+    </script>
+</body>
+</html>
