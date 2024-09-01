@@ -6,32 +6,88 @@
     <script src="https://unpkg.com/javascript-lp-solver/prod/solver.js"></script>
 </head>
 <body>
+
     <script>
-        p_list = [7];
-        q_list = [2, 5];
-        model = {
+        const due_row_arr = [0, 3.703333333333333, -7.406666666666667, 3.703333333333333];
+        const ilp_names = ["Group Balance", "Ben", "Emily", "John"];
+
+        function floor_f(x, k) {
+            const ten_k = Math.pow(10, k);
+            return Math.floor(x * ten_k) / ten_k;
+        }
+
+        function ceil_f(x, k) {
+            const ten_k = Math.pow(10, k);
+            return Math.ceil(x * ten_k) / ten_k;
+        }
+
+        // notations
+        let p = [];  // supply, payer
+        let q = [];  // demand, payee
+        let due_idx_p = [];
+        let due_idx_q = [];
+        due_row_arr.forEach((value, index) => {
+            if (value > 0) {
+                p.push(ceil_f(value, 2));
+                due_idx_p.push(index);
+            } else if (value < 0) {
+                q.push(- floor_f(value, 2));
+                due_idx_q.push(index);
+            }
+        });
+        const m = p.length;
+        const n = q.length;
+        const M = Math.min(Math.max(...p), Math.max(...q));
+        let model = {
             "optimize": "z",
             "opType": "min",
+            "constraints": {},  // fill in for-loop
+            "variables": {},  // fill in for-loop
+            "ints": {},
         }
-        
 
-    model = {
-        "optimize": "profit",
-        "opType": "max",
-        "constraints": {
-            "wood": {"max": 300},
-            "labor": {"max": 110},
-            "storage": {"max": 400}
-        },
-        "variables": {
-            "table": {"wood": 30, "labor": 5, "profit": 1200, "storage": 30},
-            "dresser": {"wood": 20, "labor": 10, "profit": 1600, "storage": 50}
-        },
-        "ints": {"table": 1, "dresser": 0}
-    }
-    results = solver.Solve(model);
-    document.write(JSON.stringify(results));
+        for (let i = 0; i < m; i++) {
+            for (let j = 0; j < n; j++) {
+                // variables
+                model['variables'][`x_${i}_${j}`] = {};
+                model['variables'][`a_${i}_${j}`] = {};
+                // integer constraints
+                model['ints'][`a_${i}_${j}`] = 1;
+                // binary constraints
+                model['variables'][`a_${i}_${j}`][`cond_bin_${i}_${j}`] = 1;
+                model['constraints'][`cond_bin_${i}_${j}`] = {"max": 1};
+                // big-M constraints
+                model['variables'][`x_${i}_${j}`][`cond_M_${i}_${j}`] = 1;
+                model['variables'][`a_${i}_${j}`][`cond_M_${i}_${j}`] = -M;
+                model['constraints'][`cond_M_${i}_${j}`] = {"max": 0};
+                // supply constraints: left
+                model['variables'][`x_${i}_${j}`][`cond_spl_${i}`] = 1;
+                // demand constraints: left
+                model['variables'][`x_${i}_${j}`][`cond_dmd_${j}`] = 1;
+                // objective function
+                model['variables'][`a_${i}_${j}`]['z'] = 1;
+            }
+            // supply constraints: right
+            model['constraints'][`cond_spl_${i}`] = {"max": p[i]};
+        }
+        // demand constraints: right
+        for (let j = 0; j < n; j++) {
+            model['constraints'][`cond_dmd_${j}`] = {"min": q[j]};
+        }
 
+        results = solver.Solve(model);
+        document.write(JSON.stringify(results));
+
+        let transfers = [];
+        for (let i = 0; i < m; i++) {
+            for (let j = 0; j < n; j++) {
+                const amount = results[`x_${i}_${j}`];
+                if (amount > 0) {
+                    transfers.push(`${ilp_names[due_idx_p[i]]} transfers $${results[`x_${i}_${j}`]} to ${ilp_names[due_idx_q[j]]}.`);
+                }
+            }
+        }
+        document.write(JSON.stringify(transfers));
     </script>
 </body>
 </html>

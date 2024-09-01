@@ -13,6 +13,7 @@
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
             crossorigin="anonymous">
     </script>
+    <script src="https://unpkg.com/javascript-lp-solver/prod/solver.js"></script>
 </head>
 <body class="container-sm">
     <div class="row alert">
@@ -155,52 +156,60 @@
     <div class="row alert">
         <div class="col-sm-12">
             <div class="card">
+                <div class="card-header">Inspections</div>
+                <div class="card-body">
+                    <ul id="validations" style="color: red;"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="row alert">
+        <div class="col-sm-12">
+            <div class="card" id="results" hidden="">
                 <div class="card-header">
                     Results
-                    <button class="btn" style="color: blue; border: none; background: none; padding-top: 0rem;"
+                    <button class="btn" style="color: blue; border: none; background: none; padding-top: 0;"
                         data-bs-toggle="modal" data-bs-target="#example">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
                             <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
                             <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
                         </svg>
                     </button>
+                    <a role="button" onclick="print_results()" href="" style="text-decoration: none; color: blue;">Print</a>
                 </div>
-                <div class="card-body">
-                    <ul id="validations" style="color: red;"></ul>
+                <div class="card-body" style="overflow-x: auto;">
+                    <p><i>Expense:</i></p>
 
-                    <div style="overflow-x: auto;">
-                        <table class="table table-bordered table-striped" style="width: fit-content;"
-                               hidden="" id="exp-tb">
-                            <thead>
-                            <tr><th>Item</th><th>Group</th></tr>
-                            </thead>
-                            <tbody></tbody>
-                            <caption class="caption-top fst-italic">Expense:</caption>
-                        </table>
-                    </div>
+                    <table class="table table-bordered table-striped" style="width: fit-content;" id="exp-tb">
+                        <thead>
+                        <tr><th>Item</th><th>Group</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
 
-                    <div style="overflow-x: auto;">
-                        <table class="table table-bordered table-striped" style="width: fit-content;"
-                               hidden="" id="spl-tb">
-                            <thead>
-                            <tr><th>Item</th><th>Group</th></tr>
-                            </thead>
-                            <tbody></tbody>
-                            <caption class="caption-top fst-italic">Split:</caption>
-                        </table>
-                    </div>
+                    <p><i>Split:</i></p>
 
-                    <div style="overflow-x: auto;">
-                        <table class="table table-bordered table-striped" style="width: fit-content;"
-                               hidden="" id="due-tb">
-                            <thead>
-                            <tr><th>Debit</th><th colspan="" id="due-credit">Credit</th></tr>
-                            <tr id="due-cols"><th>Group</th></tr>
-                            </thead>
-                            <tbody><tr></tr></tbody>
-                            <caption class="caption-top fst-italic">Due:</caption>
-                        </table>
-                    </div>
+                    <table class="table table-bordered table-striped" style="width: fit-content;" id="spl-tb">
+                        <thead>
+                        <tr><th>Item</th><th>Group</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+
+                    <p><i>Due:</i></p>
+
+                    <table class="table table-bordered table-striped" style="width: fit-content;" id="due-tb">
+                        <thead>
+                        <tr><th>Debit</th><th colspan="" id="due-credit">Credit</th></tr>
+                        <tr id="due-cols"><th>Group</th></tr>
+                        </thead>
+                        <tbody><tr></tr></tbody>
+                    </table>
+
+                    <p><i>Transfers:</i></p>
+                    <ul id="transfers"></ul>
                 </div>
             </div>
             <div class="modal fade" id="example" tabindex="-1" aria-hidden="true">
@@ -420,6 +429,7 @@
     function handle_file_loaded(event) {
         const settlement = JSON.parse(event.target.result);
         import_settlement(settlement);
+        window.scrollTo(0, document.body.scrollHeight);
     }
 
     function handle_file_selected(event) {
@@ -511,7 +521,7 @@
         URL.revokeObjectURL(url);
     }
 
-    const validations_message = document.getElementById("validations");
+    const valid_msg = document.getElementById("validations");
     const expense_table = document.getElementById("exp-tb");
     const split_table = document.getElementById("spl-tb");
     const due_table = document.getElementById("due-tb");
@@ -529,10 +539,8 @@
         const due_row = due_table.querySelector("tbody tr");
 
         // clear existed info
-        validations_message.innerHTML = '';
-        expense_table.setAttribute("hidden", "");
-        split_table.setAttribute("hidden", "");
-        due_table.setAttribute("hidden", "");
+        valid_msg.innerHTML = '';
+        results.setAttribute("hidden", "");
         // because <thead> doesn't allow <div> in it, cannot directly remove innerHTML
         while (exp_cols.children.length > 2) {  // skip "Item" and "Group"
             exp_cols.children[2].remove();
@@ -552,13 +560,14 @@
             for (let msg of settlement['valid_msg']) {
                 let msg_node = document.createElement('li');
                 msg_node.textContent = msg;
-                validations_message.appendChild(msg_node);
+                valid_msg.appendChild(msg_node);
             }
             return
         }
 
         // initialize calculated fields of settlement
         let member_ids = [];
+        let ilp_names = ["Group Balance"];
         for (let member of settlement['members']) {
             member_ids.push(member['id']);
             let exp_col = document.createElement('th');
@@ -570,13 +579,12 @@
             spl_cols.appendChild(spl_col);
             const due_col = exp_col.cloneNode(true);
             due_cols.appendChild(due_col);
+            ilp_names.push(member['name']);
         }
         const n = member_ids.length;
         due_credit.setAttribute("colspan", `${n}`);
 
         // expense & split table
-        expense_table.removeAttribute("hidden");
-        split_table.removeAttribute("hidden");
         let exp_dt_arr = [];
         let spl_dt_arr = [];
         for (let expense of settlement['expenses']) {
@@ -662,7 +670,6 @@
         spl_dt.appendChild(spl_row);
 
         // calc due table
-        due_table.removeAttribute("hidden");
         let due_row_arr = [];
         for (let i = 0; i < n + 1; i++) {
             const due_val = spl_col_sum[i] - exp_col_sum[i];
@@ -672,6 +679,130 @@
             due_cell.innerText = due_row_arr[i].toFixed(2);
             due_row.appendChild(due_cell);
         }
+
+        // solve ILP
+        const transfer_messages = solve_transfers(due_row_arr, ilp_names);
+        render_transfers(transfer_messages);
+
+        results.removeAttribute("hidden");
+        window.scrollTo(0, document.body.scrollHeight);
     }
+
+    function print_results() {
+        const new_window = window.open();
+        const doc = new_window.document;
+        const style = doc.createElement('style');
+        style.textContent = `table, th, td {
+            border-collapse: collapse;
+            border: 0.1rem solid black;
+            padding: 0.25rem;
+        }`;
+        doc.head.appendChild(style);
+        let title = doc.createElement('title');
+        title.textContent = 'Settlement';
+        doc.head.appendChild(title);
+        let datetime_now = doc.createElement('p');
+        datetime_now.textContent = new Date().toString();
+        doc.body.appendChild(datetime_now);
+        const cloned_results = document.querySelector('div#results div.card-body').cloneNode(true);
+        doc.body.appendChild(cloned_results);
+        doc.close();
+        new_window.print();
+    }
+
+    function floor_f(x, k) {
+        const ten_k = Math.pow(10, k);
+        return Math.floor(x * ten_k) / ten_k;
+    }
+
+    function ceil_f(x, k) {
+        const ten_k = Math.pow(10, k);
+        return Math.ceil(x * ten_k) / ten_k;
+    }
+
+    const transfers = document.getElementById("transfers");
+
+    function solve_transfers(due_row_arr, ilp_names) {
+        // notations
+        let p = [];  // supply, payer
+        let q = [];  // demand, payee
+        let due_idx_p = [];
+        let due_idx_q = [];
+        due_row_arr.forEach((value, index) => {
+            if (value > 0) {
+                p.push(ceil_f(value, 2));
+                due_idx_p.push(index);
+            } else if (value < 0) {
+                q.push(-floor_f(value, 2));
+                due_idx_q.push(index);
+            }
+        });
+        const m = p.length;
+        const n = q.length;
+        const M = Math.min(Math.max(...p), Math.max(...q));
+        let model = {
+            "optimize": "z",
+            "opType": "min",
+            "constraints": {},  // fill in for-loop
+            "variables": {},  // fill in for-loop
+            "ints": {},
+        }
+
+        for (let i = 0; i < m; i++) {
+            for (let j = 0; j < n; j++) {
+                // variables
+                model['variables'][`x_${i}_${j}`] = {};
+                model['variables'][`a_${i}_${j}`] = {};
+                // integer constraints
+                model['ints'][`a_${i}_${j}`] = 1;
+                // binary constraints
+                model['variables'][`a_${i}_${j}`][`cond_bin_${i}_${j}`] = 1;
+                model['constraints'][`cond_bin_${i}_${j}`] = {"max": 1};
+                // big-M constraints
+                model['variables'][`x_${i}_${j}`][`cond_M_${i}_${j}`] = 1;
+                model['variables'][`a_${i}_${j}`][`cond_M_${i}_${j}`] = -M;
+                model['constraints'][`cond_M_${i}_${j}`] = {"max": 0};
+                // supply constraints: left
+                model['variables'][`x_${i}_${j}`][`cond_spl_${i}`] = 1;
+                // demand constraints: left
+                model['variables'][`x_${i}_${j}`][`cond_dmd_${j}`] = 1;
+                // objective function
+                model['variables'][`a_${i}_${j}`]['z'] = 1;
+            }
+            // supply constraints: right
+            model['constraints'][`cond_spl_${i}`] = {"max": p[i]};
+        }
+        // demand constraints: right
+        for (let j = 0; j < n; j++) {
+            model['constraints'][`cond_dmd_${j}`] = {"min": q[j]};
+        }
+        const sol = solver.Solve(model);
+
+        // parse solutions
+        let transfers = [];
+        if (sol['feasible'] === true) {
+            for (let i = 0; i < m; i++) {
+                for (let j = 0; j < n; j++) {
+                    const amount = sol[`x_${i}_${j}`];
+                    if (amount > 0) {
+                        transfers.push(`${ilp_names[due_idx_p[i]]} transfers $${sol[`x_${i}_${j}`]} to ${ilp_names[due_idx_q[j]]}.`);
+                    }
+                }
+            }
+        } else {
+            transfers.push("Unable to solve transfers automatically, please manually propose a plan of transfers.");
+        }
+        return transfers
+    }
+
+    function render_transfers(messages) {
+        transfers.innerHTML = '';
+        for (let msg of messages) {
+            let item = document.createElement('li');
+            item.innerText = msg;
+            transfers.appendChild(item);
+        }
+    }
+
 </script>
 </html>

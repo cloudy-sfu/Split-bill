@@ -21,9 +21,9 @@ Let $m$ be the number of payers, and $n$ be the number of payees. Let $p_1, p_2,
 
 (2) Variables
 
-Let $x_{i,j}$ be the value which should be transferred from the $i$-th payer to the $j$-th payee. 
+Let $x_{i,j}$ in matrix $X_{[m \times n]}$ be the value which should be transferred from the $i$-th payer to the $j$-th payee.
 
-Let $a_{i,j} = 1$ if the $i$-th payer should transfer to the $j$-th payee, otherwise $a_{i,j} = 0$.
+Let $a_{i,j} = 1$ in matrix $A_{[m\times n]}$ if the $i$-th payer should transfer to the $j$-th payee, otherwise $a_{i,j} = 0$.
 
 (3) The objective function
 
@@ -44,7 +44,7 @@ $$
 The demand constraint:
 
 $$
-\sum_{i=1}^m x_{i,j} \leq q_i, \quad \forall i = 1, ..., n
+\sum_{i=1}^m x_{i,j} \geq q_j, \quad \forall j = 1, ..., n
 $$
 
 If $a_{i,j} = 0$, $x_{i,j}$ can only be 0; if $a_{i, j} = 1$, $x_{i,j}$ can be sufficiently large.
@@ -56,4 +56,4 @@ $$
 
 Non-negative constraint: $x_{i,j} \geq 0, \forall i = 1, ..., m, \forall j = 1, ..., n$
 
-Binary variable constraint: $a_{i,j} \in {0, 1}, \forall i = 1, ..., m, \forall j = 1, ..., n$
+Binary variable constraint: $a_{i,j} \in \{0, 1\}, \forall i = 1, ..., m, \forall j = 1, ..., n$
