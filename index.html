@@ -633,10 +633,10 @@
             for (let i = 0; i < n + 1; i++) {
                 let exp_cell = document.createElement('td');
                 exp_cell.style.textAlign = "end";
-                exp_cell.innerText = exp_row_arr[i].toFixed(2);
+                exp_cell.innerText = exp_row_arr[i].toFixed(3);
                 exp_row.appendChild(exp_cell);
                 let spl_cell = exp_cell.cloneNode(false);
-                spl_cell.innerText = spl_row_arr[i].toFixed(2);
+                spl_cell.innerText = spl_row_arr[i].toFixed(3);
                 spl_row.appendChild(spl_cell);
             }
             exp_dt.appendChild(exp_row);
@@ -660,10 +660,10 @@
         for (let i = 0; i < n + 1; i++) {
             let exp_cell = document.createElement('th');
             exp_cell.style.textAlign = "end";
-            exp_cell.innerText = exp_col_sum[i].toFixed(2);
+            exp_cell.innerText = exp_col_sum[i].toFixed(3);
             exp_row.appendChild(exp_cell);
             let spl_cell = exp_cell.cloneNode(false);
-            spl_cell.innerText = spl_col_sum[i].toFixed(2);
+            spl_cell.innerText = spl_col_sum[i].toFixed(3);
             spl_row.appendChild(spl_cell);
         }
         exp_dt.appendChild(exp_row);
@@ -676,7 +676,7 @@
             due_row_arr.push(due_val);
             let due_cell = document.createElement('td');
             due_cell.style.textAlign = "end";
-            due_cell.innerText = due_row_arr[i].toFixed(2);
+            due_cell.innerText = due_row_arr[i].toFixed(3);
             due_row.appendChild(due_cell);
         }
 
