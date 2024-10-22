@@ -177,7 +177,7 @@
                             <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
                         </svg>
                     </button>
-                    <a role="button" onclick="print_results()" href="" style="text-decoration: none; color: blue;">Print</a>
+                    <a role="button" onclick="print_results()" href="javascript:void(0)" style="text-decoration: none; color: blue;">Print</a>
                 </div>
                 <div class="card-body" style="overflow-x: auto;">
                     <p><i>Expense:</i></p>
@@ -202,7 +202,10 @@
 
                     <table class="table table-bordered table-striped" style="width: fit-content;" id="due-tb">
                         <thead>
-                        <tr><th>Debit</th><th colspan="" id="due-credit">Credit</th></tr>
+                        <tr>
+                            <th style="text-align: center">Debit</th>
+                            <th colspan="" id="due-credit" style="text-align: center">Credit</th>
+                        </tr>
                         <tr id="due-cols"><th>Group</th></tr>
                         </thead>
                         <tbody><tr></tr></tbody>
@@ -500,7 +503,7 @@
                 if (expense_dict['splits'].length === 0) {
                     settlement['valid_msg'].push(`The item ${expense_dict['item']} is split evenly, so manual split plans should not exist.`);
                 }
-                const total_amount = amounts.reduce((s, x) => s + x, 0);
+                const total_amount = Math.round(amounts.reduce((s, x) => s + x, 0));
                 if (total_amount > expense_dict['price']) {
                     settlement['valid_msg'].push(`The total manually split amount of item ${expense_dict['item']} should not exceed its price.`);
                 }
@@ -596,7 +599,6 @@
             exp_row_arr[0] = price;
             exp_row_arr[b + 1] = price;
             exp_dt_arr.push(exp_row_arr);
-            spl_row_arr[0] = price;
             if (expense['split_evenly']) {
                 spl_row_arr.fill(price / n, 1);
             } else {
@@ -618,6 +620,7 @@
                     }
                 }
             }
+            spl_row_arr[0] = spl_row_arr.slice(1).reduce((s, x) => s + x, 0);
             spl_dt_arr.push(spl_row_arr);
 
             // generate HTML structure
@@ -633,10 +636,10 @@
             for (let i = 0; i < n + 1; i++) {
                 let exp_cell = document.createElement('td');
                 exp_cell.style.textAlign = "end";
-                exp_cell.innerText = exp_row_arr[i].toFixed(3);
+                exp_cell.innerText = exp_row_arr[i].toFixed(2);
                 exp_row.appendChild(exp_cell);
                 let spl_cell = exp_cell.cloneNode(false);
-                spl_cell.innerText = spl_row_arr[i].toFixed(3);
+                spl_cell.innerText = spl_row_arr[i].toFixed(2);
                 spl_row.appendChild(spl_cell);
             }
             exp_dt.appendChild(exp_row);
@@ -660,10 +663,10 @@
         for (let i = 0; i < n + 1; i++) {
             let exp_cell = document.createElement('th');
             exp_cell.style.textAlign = "end";
-            exp_cell.innerText = exp_col_sum[i].toFixed(3);
+            exp_cell.innerText = exp_col_sum[i].toFixed(2);
             exp_row.appendChild(exp_cell);
             let spl_cell = exp_cell.cloneNode(false);
-            spl_cell.innerText = spl_col_sum[i].toFixed(3);
+            spl_cell.innerText = spl_col_sum[i].toFixed(2);
             spl_row.appendChild(spl_cell);
         }
         exp_dt.appendChild(exp_row);
@@ -672,11 +675,11 @@
         // calc due table
         let due_row_arr = [];
         for (let i = 0; i < n + 1; i++) {
-            const due_val = spl_col_sum[i] - exp_col_sum[i];
+            const due_val = round_f(spl_col_sum[i] - exp_col_sum[i], 2);
             due_row_arr.push(due_val);
-            let due_cell = document.createElement('td');
+            let due_cell = document.createElement('td');  // the numeric line of "due" table
             due_cell.style.textAlign = "end";
-            due_cell.innerText = due_row_arr[i].toFixed(3);
+            due_cell.innerText = due_row_arr[i].toFixed(2);
             due_row.appendChild(due_cell);
         }
 
@@ -707,17 +710,17 @@
         const cloned_results = document.querySelector('div#results div.card-body').cloneNode(true);
         doc.body.appendChild(cloned_results);
         doc.close();
+        // Prevent any action on the new window when the print dialog is canceled
+        new_window.onbeforeunload = function() {return ""};
         new_window.print();
+        new_window.onafterprint = function() {
+            new_window.onbeforeunload = null;  // Allow closing without any further prompts
+        };
     }
 
-    function floor_f(x, k) {
+    function round_f(x, k) {
         const ten_k = Math.pow(10, k);
-        return Math.floor(x * ten_k) / ten_k;
-    }
-
-    function ceil_f(x, k) {
-        const ten_k = Math.pow(10, k);
-        return Math.ceil(x * ten_k) / ten_k;
+        return Math.round(x * ten_k) / ten_k;
     }
 
     const transfers = document.getElementById("transfers");
@@ -730,10 +733,10 @@
         let due_idx_q = [];
         due_row_arr.forEach((value, index) => {
             if (value > 0) {
-                p.push(ceil_f(value, 2));
+                p.push(value);
                 due_idx_p.push(index);
             } else if (value < 0) {
-                q.push(-floor_f(value, 2));
+                q.push(-value);
                 due_idx_q.push(index);
             }
         });
