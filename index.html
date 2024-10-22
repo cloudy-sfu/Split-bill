@@ -170,13 +170,6 @@
             <div class="card" id="results" hidden="">
                 <div class="card-header">
                     Results
-                    <button class="btn" style="color: blue; border: none; background: none; padding-top: 0;"
-                        data-bs-toggle="modal" data-bs-target="#example">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
-                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
-                            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
-                        </svg>
-                    </button>
                     <a role="button" onclick="print_results()" href="javascript:void(0)" style="text-decoration: none; color: blue;">Print</a>
                 </div>
                 <div class="card-body" style="overflow-x: auto;">
@@ -202,31 +195,13 @@
 
                     <table class="table table-bordered table-striped" style="width: fit-content;" id="due-tb">
                         <thead>
-                        <tr>
-                            <th style="text-align: center">Debit</th>
-                            <th colspan="" id="due-credit" style="text-align: center">Credit</th>
-                        </tr>
-                        <tr id="due-cols"><th>Group</th></tr>
+                        <tr id="due-cols"><th>Group Balance</th></tr>
                         </thead>
                         <tbody><tr></tr></tbody>
                     </table>
-
+                    <p>Positive due means gain from others; negative due means pay to others.</p>
                     <p><i>Transfers:</i></p>
                     <ul id="transfers"></ul>
-                </div>
-            </div>
-            <div class="modal fade" id="example" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <div class="modal-title">How to read expense, split, and due tables?</div>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <img src="example.png" style="width: 100%;"
-                                 alt="The example to explain the generated tables.">
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -537,7 +512,6 @@
         const exp_dt = expense_table.querySelector("tbody");
         const spl_cols = split_table.querySelector("thead tr");
         const spl_dt = split_table.querySelector("tbody");
-        const due_credit = due_table.querySelector("#due-credit");
         const due_cols = due_table.querySelector("tr#due-cols");
         const due_row = due_table.querySelector("tbody tr");
 
@@ -570,7 +544,7 @@
 
         // initialize calculated fields of settlement
         let member_ids = [];
-        let ilp_names = ["Group Balance"];
+        let ilp_names = ["The group"];  // placeholder, not actually used.
         for (let member of settlement['members']) {
             member_ids.push(member['id']);
             let exp_col = document.createElement('th');
@@ -584,12 +558,11 @@
             due_cols.appendChild(due_col);
             ilp_names.push(member['name']);
         }
-        const n = member_ids.length;
-        due_credit.setAttribute("colspan", `${n}`);
 
         // expense & split table
         let exp_dt_arr = [];
         let spl_dt_arr = [];
+        const n = member_ids.length;
         for (let expense of settlement['expenses']) {
             // calc values in tables
             let exp_row_arr = new Array(n + 1).fill(0);
@@ -675,7 +648,7 @@
         // calc due table
         let due_row_arr = [];
         for (let i = 0; i < n + 1; i++) {
-            const due_val = round_f(spl_col_sum[i] - exp_col_sum[i], 2);
+            const due_val = round_f(exp_col_sum[i] - spl_col_sum[i], 2);
             due_row_arr.push(due_val);
             let due_cell = document.createElement('td');  // the numeric line of "due" table
             due_cell.style.textAlign = "end";
@@ -685,7 +658,11 @@
 
         // solve ILP
         const transfer_messages = solve_transfers(due_row_arr, ilp_names);
-        render_transfers(transfer_messages);
+        if (transfer_messages == null) {
+            transfers.innerText = "Unable to solve transfers automatically, please manually propose a plan of transfers.";
+        } else {
+            render_transfers(transfer_messages);
+        }
 
         results.removeAttribute("hidden");
         window.scrollTo(0, document.body.scrollHeight);
@@ -731,15 +708,21 @@
         let q = [];  // demand, payee
         let due_idx_p = [];
         let due_idx_q = [];
-        due_row_arr.forEach((value, index) => {
-            if (value > 0) {
-                p.push(value);
-                due_idx_p.push(index);
-            } else if (value < 0) {
-                q.push(-value);
-                due_idx_q.push(index);
+
+        if (due_row_arr[0] > 0) {  // i = 0, group balance must be non-negative
+            p.push(due_row_arr[0]);  // positive group balance is supply, not demand
+            due_idx_p.push(0);
+        }
+        for (let i = 1; i < due_row_arr.length; i++) {
+            if (due_row_arr[i] > 0) {
+                q.push(due_row_arr[i]);  // demand
+                due_idx_q.push(i);
+            } else if (due_row_arr[i] < 0) {
+                p.push(- due_row_arr[i]);  // supply
+                due_idx_p.push(i);
             }
-        });
+        }
+
         const m = p.length;
         const n = q.length;
         const M = Math.min(Math.max(...p), Math.max(...q));
@@ -788,12 +771,21 @@
                 for (let j = 0; j < n; j++) {
                     const amount = sol[`x_${i}_${j}`];
                     if (amount > 0) {
-                        transfers.push(`${ilp_names[due_idx_p[i]]} transfers $${sol[`x_${i}_${j}`]} to ${ilp_names[due_idx_q[j]]}.`);
+                        const supply_idx = due_idx_p[i];
+                        const demand_idx = due_idx_q[j];
+                        if (demand_idx === 0) {
+                            return
+                        } else if (supply_idx === 0) {
+                            transfers.push(`The group still owes $${sol[`x_${i}_${j}`]} to ${ilp_names[demand_idx]}.`);
+                        }
+                        else {
+                            transfers.push(`${ilp_names[supply_idx]} should transfer $${sol[`x_${i}_${j}`]} to ${ilp_names[demand_idx]}.`);
+                        }
                     }
                 }
             }
         } else {
-            transfers.push("Unable to solve transfers automatically, please manually propose a plan of transfers.");
+            return
         }
         return transfers
     }
