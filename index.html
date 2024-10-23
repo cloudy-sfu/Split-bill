@@ -175,7 +175,8 @@
                 <div class="card-header">
                     Results
                     <a role="button" href="javascript:print_results()"
-                       style="text-decoration: none; color: blue; margin-left: 2rem;">
+                       style="text-decoration: none; color: blue; margin-left: 2rem;
+                       cursor: pointer;">
                         Print
                     </a>
                 </div>
@@ -488,8 +489,8 @@
                 if (expense_dict['splits'].length === 0) {
                     settlement['valid_msg'].push(`The item ${expense_dict['item']} is split evenly, so manual split plans should not exist.`);
                 }
-                const total_amount = Math.round(amounts.reduce((s, x) => s + x, 0));
-                if (total_amount > expense_dict['price']) {
+                const approx_split_total = round_f(amounts.reduce((s, x) => s + x, 0), 2);
+                if (approx_split_total > expense_dict['price']) {
                     settlement['valid_msg'].push(`The total manually split amount of item ${expense_dict['item']} should not exceed its price.`);
                 }
             }
@@ -536,9 +537,7 @@
         while (spl_cols.children.length > 2) {
             spl_cols.children[2].remove();
         }
-        while (due_cols.children.length > 1) {
-            due_cols.children[1].remove();
-        }
+        due_cols.innerHTML = '';
         exp_dt.innerHTML = '';
         spl_dt.innerHTML = '';
         due_row.innerHTML = '';
@@ -620,10 +619,10 @@
             for (let i = 0; i < n + 1; i++) {
                 let exp_cell = document.createElement('td');
                 exp_cell.style.textAlign = "end";
-                exp_cell.innerText = exp_row_arr[i].toFixed(2);
+                exp_cell.innerText = exp_row_arr[i].toFixed(3);
                 exp_row.appendChild(exp_cell);
                 let spl_cell = exp_cell.cloneNode(false);
-                spl_cell.innerText = spl_row_arr[i].toFixed(2);
+                spl_cell.innerText = spl_row_arr[i].toFixed(3);
                 spl_row.appendChild(spl_cell);
             }
             exp_dt.appendChild(exp_row);
@@ -647,28 +646,28 @@
         for (let i = 0; i < n + 1; i++) {
             let exp_cell = document.createElement('th');
             exp_cell.style.textAlign = "end";
-            exp_cell.innerText = exp_col_sum[i].toFixed(2);
+            exp_cell.innerText = exp_col_sum[i].toFixed(3);
             exp_row.appendChild(exp_cell);
             let spl_cell = exp_cell.cloneNode(false);
-            spl_cell.innerText = spl_col_sum[i].toFixed(2);
+            spl_cell.innerText = spl_col_sum[i].toFixed(3);
             spl_row.appendChild(spl_cell);
         }
         exp_dt.appendChild(exp_row);
         spl_dt.appendChild(spl_row);
 
         // calc group balance
-        const group_balance = round_f(exp_col_sum[0] - spl_col_sum[0], 2);
+        const group_balance = exp_col_sum[0] - spl_col_sum[0];
         const group_balance_tag = document.getElementById('group-balance');
-        group_balance_tag.innerText = group_balance.toFixed(2);
+        group_balance_tag.innerText = group_balance.toFixed(3);
 
         // calc due table
         let due_row_arr = [];
         for (let i = 0; i < n; i++) {
-            const due_val = round_f(spl_col_sum[i+1] - exp_col_sum[i+1], 2);
+            const due_val = spl_col_sum[i+1] - exp_col_sum[i+1];
             due_row_arr.push(due_val);
             let due_cell = document.createElement('td');  // the numeric line of "due" table
             due_cell.style.textAlign = "end";
-            due_cell.innerText = due_row_arr[i].toFixed(2);
+            due_cell.innerText = due_row_arr[i].toFixed(3);
             due_row.appendChild(due_cell);
         }
 
@@ -739,7 +738,10 @@
         if (group_balance > 0) {
             p.push(group_balance);
             due_idx_p.push(n_members);
-        }
+        } else if (group_balance < 0) {
+            q.push(group_balance);
+            due_idx_q.push(n_members);
+        }  // else group_balance = 0, do nothing
 
         const m = p.length;
         const n = q.length;
@@ -787,14 +789,17 @@
         if (sol['feasible'] === true) {
             for (let i = 0; i < m; i++) {
                 for (let j = 0; j < n; j++) {
-                    const amount = sol[`x_${i}_${j}`];
-                    if (amount > 0) {
+                    const amt = sol[`x_${i}_${j}`];
+                    if (amt >= 0.005) {
+                        const amt_str = amt.toFixed(2);
                         const supply_idx = due_idx_p[i];
                         const demand_idx = due_idx_q[j];
                         if (supply_idx === n_members) {
-                            transfers.push(`The group still owes $${sol[`x_${i}_${j}`]} to ${ilp_names[demand_idx]}.`);
+                            transfers.push(`${ilp_names[demand_idx]} has $${amt_str} not reimbursed.`);
+                        } else if (demand_idx === n_members) {
+                            transfers.push(`${ilp_names[supply_idx]} holds $${amt_str} from the group balance.`);
                         } else {
-                            transfers.push(`${ilp_names[supply_idx]} should transfer $${sol[`x_${i}_${j}`]} to ${ilp_names[demand_idx]}.`);
+                            transfers.push(`${ilp_names[supply_idx]} should transfer $${amt_str} to ${ilp_names[demand_idx]}.`);
                         }
                     }
                 }

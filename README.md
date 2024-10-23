@@ -5,9 +5,11 @@
 
 ## Acknowledgement
 
-Javascript linear programming solver: [jsLPSolver](https://github.com/JWally/jsLPSolver)
+JavaScript linear programming solver: [jsLPSolver](https://github.com/JWally/jsLPSolver)
 
+## Limitation
 
+1. Payee can lose or earn money when making the transfers plan, because of the rounding problem. The upper limit of lost or gained amount is $0.005 \times (n - 1)$ , where $n$ is the number of members in the group. The program prefers fairness than accuracy. To split $1 into 3, the program will give (0.33, 0.33, 0.33) instead of (0.33, 0.33, 0.34).
 
 ## Minimize number of transfers
 
