@@ -14,6 +14,10 @@
             crossorigin="anonymous">
     </script>
     <script src="https://unpkg.com/javascript-lp-solver/prod/solver.js"></script>
+    <script>
+        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
+        const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+    </script>
 </head>
 <body class="container-sm">
     <div class="row alert">
@@ -170,7 +174,10 @@
             <div class="card" id="results" hidden="">
                 <div class="card-header">
                     Results
-                    <a role="button" onclick="print_results()" href="javascript:void(0)" style="text-decoration: none; color: blue;">Print</a>
+                    <a role="button" href="javascript:print_results()"
+                       style="text-decoration: none; color: blue; margin-left: 2rem;">
+                        Print
+                    </a>
                 </div>
                 <div class="card-body" style="overflow-x: auto;">
                     <p><i>Expense:</i></p>
@@ -191,16 +198,19 @@
                         <tbody></tbody>
                     </table>
 
+                    <p><i>Group balance:</i> $<span id="group-balance"></span></p>
+
                     <p><i>Due:</i></p>
 
                     <table class="table table-bordered table-striped" style="width: fit-content;" id="due-tb">
                         <thead>
-                        <tr id="due-cols"><th>Group Balance</th></tr>
+                        <tr id="due-cols"></tr>
                         </thead>
                         <tbody><tr></tr></tbody>
                     </table>
-                    <p>Positive due means gain from others; negative due means pay to others.</p>
+
                     <p><i>Transfers:</i></p>
+
                     <ul id="transfers"></ul>
                 </div>
             </div>
@@ -503,6 +513,7 @@
     const expense_table = document.getElementById("exp-tb");
     const split_table = document.getElementById("spl-tb");
     const due_table = document.getElementById("due-tb");
+    const results = document.getElementById("results");
 
     function settle() {
         const settlement = export_and_validate_settlement();
@@ -544,7 +555,7 @@
 
         // initialize calculated fields of settlement
         let member_ids = [];
-        let ilp_names = ["The group"];  // placeholder, not actually used.
+        let ilp_names = [];
         for (let member of settlement['members']) {
             member_ids.push(member['id']);
             let exp_col = document.createElement('th');
@@ -645,10 +656,15 @@
         exp_dt.appendChild(exp_row);
         spl_dt.appendChild(spl_row);
 
+        // calc group balance
+        const group_balance = round_f(exp_col_sum[0] - spl_col_sum[0], 2);
+        const group_balance_tag = document.getElementById('group-balance');
+        group_balance_tag.innerText = group_balance.toFixed(2);
+
         // calc due table
         let due_row_arr = [];
-        for (let i = 0; i < n + 1; i++) {
-            const due_val = round_f(exp_col_sum[i] - spl_col_sum[i], 2);
+        for (let i = 0; i < n; i++) {
+            const due_val = round_f(spl_col_sum[i+1] - exp_col_sum[i+1], 2);
             due_row_arr.push(due_val);
             let due_cell = document.createElement('td');  // the numeric line of "due" table
             due_cell.style.textAlign = "end";
@@ -657,7 +673,7 @@
         }
 
         // solve ILP
-        const transfer_messages = solve_transfers(due_row_arr, ilp_names);
+        const transfer_messages = solve_transfers(due_row_arr, group_balance, ilp_names);
         if (transfer_messages == null) {
             transfers.innerText = "Unable to solve transfers automatically, please manually propose a plan of transfers.";
         } else {
@@ -702,25 +718,27 @@
 
     const transfers = document.getElementById("transfers");
 
-    function solve_transfers(due_row_arr, ilp_names) {
+    function solve_transfers(due_row_arr, group_balance, ilp_names) {
         // notations
         let p = [];  // supply, payer
         let q = [];  // demand, payee
         let due_idx_p = [];
         let due_idx_q = [];
+        const n_members = due_row_arr.length;
 
-        if (due_row_arr[0] > 0) {  // i = 0, group balance must be non-negative
-            p.push(due_row_arr[0]);  // positive group balance is supply, not demand
-            due_idx_p.push(0);
-        }
-        for (let i = 1; i < due_row_arr.length; i++) {
+        for (let i = 0; i < n_members; i++) {
             if (due_row_arr[i] > 0) {
-                q.push(due_row_arr[i]);  // demand
-                due_idx_q.push(i);
-            } else if (due_row_arr[i] < 0) {
-                p.push(- due_row_arr[i]);  // supply
+                p.push(due_row_arr[i]);  // supply
                 due_idx_p.push(i);
+            } else if (due_row_arr[i] < 0) {
+                q.push(- due_row_arr[i]);  // demand
+                due_idx_q.push(i);
             }
+        }
+
+        if (group_balance > 0) {
+            p.push(group_balance);
+            due_idx_p.push(n_members);
         }
 
         const m = p.length;
@@ -773,12 +791,9 @@
                     if (amount > 0) {
                         const supply_idx = due_idx_p[i];
                         const demand_idx = due_idx_q[j];
-                        if (demand_idx === 0) {
-                            return
-                        } else if (supply_idx === 0) {
+                        if (supply_idx === n_members) {
                             transfers.push(`The group still owes $${sol[`x_${i}_${j}`]} to ${ilp_names[demand_idx]}.`);
-                        }
-                        else {
+                        } else {
                             transfers.push(`${ilp_names[supply_idx]} should transfer $${sol[`x_${i}_${j}`]} to ${ilp_names[demand_idx]}.`);
                         }
                     }
